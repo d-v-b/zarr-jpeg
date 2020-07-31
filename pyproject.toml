@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "zarr-jpeg"
+version = "0.1.0"
+description = "JPEG Compression for uint8 zarr arrays"
+authors = ["Davis Vann Bennett <davis.v.bennett@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numcodecs = "^0.6.4"
+imagecodecs = "^2020.1.31"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.0.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
