@@ -6,7 +6,7 @@ Enable JPEG encoding of zarr / n5 chunks. Only tested with 2D or 3D `uint8` nume
 ### Usage
 
 Stand-alone:
-```python
+```python3
 from zarr_jpeg import jpeg
 import numpy as np
 data = np.random.randint((100,255), (100,100,100), dtype='uint8')
@@ -16,11 +16,22 @@ encoded = codec.encode(data)
 decoded = codec.decode(encoded).reshape(data.shape)
 ```
 With zarr:
-```python
+```python3
 from zarr_jpeg import jpeg
 import zarr
 array = zarr.open_array('foo/bar.zarr', path='path/to/array', compressor=jpeg(quality=50), shape=(100,100,100), dtype='uint8')
 ```
+
+Note that if an image has more than two dimensions then all but the last dimension are collapsed together to make a two-dimensional image to be encoded.  For example, an image with shape (10, 200, 3000) is encoded as the shape (2000, 3000).  However the collapsing can be suppressed with:
+
+```python3
+codec = jpeg(quality=100, axis_reduction=None)
+```
+Alternatively, the collapsing can be specified explicitly.  For example:
+```python3
+codec = jpeg(quality=100, axis_reduction=[[0], [1, 2], [3, 4, 5]])
+```
+reshapes the shape (2, 3, 4, 5, 6, 7) to (2, 12, 210).
 
 ### References
 This repo is inspired by the [neuroglancer "precomputed" format](https://github.com/google/neuroglancer/blob/master/src/neuroglancer/datasource/precomputed/volume.md), which uses jpeg encoding to compress chunks of imaging data.
