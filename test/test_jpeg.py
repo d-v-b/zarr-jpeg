@@ -1,50 +1,44 @@
-import itertools
-
-
 import numpy as np
 import pytest
-
-
+from imagecodecs import jpeg_encode
 from zarr_jpeg import jpeg
-from numcodecs.tests.common import check_encode_decode, check_config, check_repr
-
+from zarr_jpeg.zarr_jpeg import validate_axis_reduction
+from numcodecs.tests.common import check_config
 from itertools import product
 
 codecs = [
-    jpeg(),
-    jpeg(quality=1),
-    jpeg(quality=50),
-    jpeg(quality=100),
+    jpeg(input_shape=(8,8)),
+    jpeg(input_shape=(8,8,8), quality=1),
+    jpeg(input_shape=(8,8,8), quality=1),
+    jpeg(input_shape=(8,9,10,11), quality=100),
 ]
 
 
 # only uint8 data
-# only 2D and 3D shapes
+# 2D shapes and larger
 # mix of orders: C, F
 arrays = [
-    np.arange(100, dtype="u1").reshape((10, 10)),
-    np.random.randint(0, 255, size=10 * 11 * 12, dtype="u1").reshape(
-        10, 11, 12, order="F"
-    ),
-    np.random.randint(0, 255, size=10 * 11 * 12, dtype="u1").reshape(
-        10, 11, 12, order="C"
-    ),
+    np.zeros((8,8), dtype='uint8'),
+    np.random.randint(0, 255, size=8 * 8 * 8, dtype="u1").reshape(8,8,8, order="F"),
+    np.random.randint(0, 255, size=8 * 8 * 8, dtype="u1").reshape(8,8,8, order="C"),
+    np.random.randint(0, 255, size=8 * 9 * 10 * 11, dtype="u1").reshape(8, 9, 10, 11, order="C"),
 ]
 
 
 def test_config():
-    codec = jpeg(quality=50)
+    codec = jpeg(input_shape=(10,10), quality=50)
     check_config(codec)
 
 
 def test_eq():
-    assert jpeg() == jpeg()
-    assert not jpeg() != jpeg()
-    assert jpeg(1) == jpeg(1)
-    assert jpeg(1) != jpeg(90)
-    assert jpeg() != "foo"
-    assert "foo" != jpeg()
-    assert not jpeg() == "foo"
+    input_shape = (8,8)
+    assert jpeg(input_shape) == jpeg(input_shape)
+    assert not jpeg(input_shape) != jpeg(input_shape)
+    assert jpeg(input_shape, quality=1) == jpeg(input_shape, quality=1)
+    assert jpeg(input_shape, quality=1) != jpeg(input_shape, quality=90)
+    assert jpeg(input_shape) != "foo"
+    assert "foo" != jpeg(input_shape)
+    assert not jpeg(input_shape) == "foo"
 
 
 def test_err_encode_list():
@@ -62,9 +56,44 @@ def test_err_out_too_small():
             codec.decode(codec.encode(arr), out)
 
 
-def test_planarization():
-    for array, codec in product(arrays, codecs):
-        if array.ndim > 2:
-            assert codec.encode(array) == codec.encode(
-                array.reshape(array.shape[0] * array.shape[1], -1)
-            )
+def test_default_axis_reduction():
+    for array, codec in zip(arrays, codecs):
+        print(array.shape)
+        print(codec.axis_reduction)
+        new_shape = [np.prod([array.shape[dim] for dim in axis], dtype='int') for axis in codec.axis_reduction]
+        print(new_shape)
+        assert codec.encode(array) == jpeg_encode(
+            array.reshape(new_shape), level=codec.quality)
+
+
+def test_validate_axis_reduction():
+    input_shape=(1,)
+    axis_reduction = None
+    with pytest.raises(ValueError):
+        validate_axis_reduction(input_shape, axis_reduction)
+
+    input_shape=(1,1)
+    axis_reduction = None
+    with pytest.raises(ValueError):
+        validate_axis_reduction(input_shape, axis_reduction)
+
+    input_shape=(10,1,1)
+    axis_reduction = None
+    with pytest.raises(ValueError):
+        validate_axis_reduction(input_shape, axis_reduction)
+
+    input_shape=(10,10)
+    axis_reduction = None
+    assert validate_axis_reduction(input_shape, axis_reduction) == ((0,), (1,), ())
+
+    input_shape=(10,10,10)
+    axis_reduction = None
+    assert validate_axis_reduction(input_shape, axis_reduction) == ((0,1), (2,), ())
+
+    input_shape=(10,10,10,1)
+    axis_reduction = None
+    assert validate_axis_reduction(input_shape, axis_reduction) == ((0,1,3), (2,), ())
+
+    input_shape=(10,10,1,1)
+    axis_reduction = None
+    assert validate_axis_reduction(input_shape, axis_reduction) == ((0,2,3), (1,), ())
