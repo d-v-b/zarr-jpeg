@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "zarr-jpeg"
-version = "0.1.0"
+version = "0.1.1"
 description = "JPEG Compression for uint8 zarr arrays"
 authors = ["Davis Vann Bennett <davis.v.bennett@gmail.com>"]
 license = "MIT"
